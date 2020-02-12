@@ -35,9 +35,8 @@
                 $func = $tmp[0];
                 $a = $tag.$request;
                 if (mb_substr($a, 0, 1) != "/") $a = "/".$a;
-                $a = str_replace("{","[",$a);
-                $a = str_replace("}","]",$a);
-                    $path[$a][$typeRequest] = [
+                preg_match_all("/{(\w+)}/",$a, $variablesInPath);
+                $path[$a][$typeRequest] = [
                     "tags"=>[($tag == null) ? "null" : $tag],
                     "summary"=>"", 
                     "description"=>"",
@@ -56,7 +55,7 @@
                     ],
                     
                 ];
-                $arr = parseClassFile($request, $class, $func);
+                $arr = parseClassFile($request, $class, $func, $variablesInPath[0]);
                 if (count($arr) > 0) {
                     $path[$a][$typeRequest]["parameters"] = $arr;
                 }
@@ -97,8 +96,8 @@
         print("\t-h ( show help )\n");
     }
 
-    function parseClassFile($request, $class, $func){
-        $src_file = fopen("application/code/".trim(str_replace('\\', '/', $class)).'.php', "r");
+    function parseClassFile($request, $class, $func, $variablesInPath){
+        $src_file = fopen("../application/code/".trim(str_replace('\\', '/', $class)).'.php', "r");
         if ($src_file){
             $inc = 0; // счетчик открывающих и закрывающих скобок
             $issetBool = 0; // отметка о том, что мы нашли нужную нам функцию
@@ -144,6 +143,22 @@
             }
             
             $return = [];
+            if (count($variablesInPath) > 0) {
+                foreach ($variablesInPath as $key => $vars) {
+                    if (is_string($vars)) {
+                        $vars = str_replace("{","",$vars);
+                        $vars = str_replace("}","",$vars);
+                        $return[] = [
+                            "name"          =>  $vars,
+                            "in"            =>  "path",
+                            "description"   =>  "description",
+                            "required"      =>  true,
+                            "explode"       =>  true,
+                            "schema"        =>  ["type"=>"string"]
+                        ];
+                    }
+                }
+            }
             foreach ($params as $key => $p) {
                         $return[] = [
                             "name"          =>  $p,
